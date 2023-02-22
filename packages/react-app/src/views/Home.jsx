@@ -9,113 +9,91 @@ import { Link } from "react-router-dom";
  * @param {*} readContracts contracts from current chain already pre-loaded using ethers contract module. More here https://docs.ethers.io/v5/api/contract/contract/
  * @returns react component
  **/
-function Home({ yourLocalBalance, readContracts }) {
-  // you can also use hooks locally in your component of choice
-  // in this case, let's keep track of 'purpose' variable from our contract
-  const purpose = useContractReader(readContracts, "YourContract", "purpose");
+function Home({ readContracts, writeContracts, signer, provider, network }) {
+  // @author: Jesper; AN EXAMPLE OF HOW TO IMPLEMENT EIP712
+  
+  // put the contract address here (needs to be updated when the contract changes)
+  const contractAddr = "0xa513e6e4b8f2a923d98304ec87f64353c4d5c853";
+
+  const getAllowance = async () => {
+    const myAccount = await signer.getAddress();
+
+    let allowance = (await readContracts.YourContract.allowance(myAccount, contractAddr)).toNumber();
+    console.log("CURRENT ALLOWANCE", allowance);
+  }
+
+  const signData = async () => {
+    const myAccount = await signer.getAddress();
+    const amount = 1000;
+    const deadline = +new Date() + 60 * 60;
+    console.log("deadline: " + deadline);
+
+    console.log("chain Id:", network.chainId);
+
+    const nonce = (await readContracts.YourContract.nonces(myAccount)).toNumber();
+    console.log("nonce:", nonce);
+
+    const typedData = {
+      types: {
+        EIP712Domain: [
+          { name: "name", type: "string" },
+          { name: "version", type: "string" },
+          { name: "chainId", type: "uint256" },
+          { name: "verifyingContract", type: "address" },
+        ],
+        Permit: [
+          { name: "owner", type: "address" },
+          { name: "spender", type: "address" },
+          { name: "value", type: "uint256" },
+          { name: "nonce", type: "uint256" },
+          { name: "deadline", type: "uint256" }
+        ],
+      },
+      primaryType: "Permit",
+      domain: {
+        name: "Jesper",
+        version: "1",
+        chainId: network.chainId,
+        verifyingContract: contractAddr
+      },
+      message: {
+        owner: myAccount,
+        spender: contractAddr,
+        value: amount,
+        nonce: nonce,
+        deadline: deadline
+      }
+    };
+
+    let signature = await signer.provider.send("eth_signTypedData_v4",
+      [myAccount, JSON.stringify(typedData)]
+    );
+    const split = ethers.utils.splitSignature(signature);
+
+    console.log("r: ", split.r);
+    console.log("s: ", split.s);
+    console.log("v: ", split.v);
+
+    let allowance = (await readContracts.YourContract.allowance(myAccount, contractAddr)).toNumber();
+    console.log("ALLOWANCE BEFORE:", allowance);
+
+    const tx = await writeContracts.YourContract.permit(
+      myAccount, contractAddr, amount, deadline, split.v, split.r, split.s);
+    await tx.wait();
+
+    // confirm that the allowance was changed:
+    allowance = (await readContracts.YourContract.allowance(myAccount, contractAddr)).toNumber();
+    console.log("ALLOWANCE AFTER:", allowance);
+  };
 
   return (
+    // just a simple button to show metamask and the data:
     <div>
       <div style={{ margin: 32 }}>
-        <span style={{ marginRight: 8 }}>📝</span>
-        This Is Your App Home. You can start editing it in{" "}
-        <span
-          className="highlight"
-          style={{ marginLeft: 4, /* backgroundColor: "#f9f9f9", */ padding: 4, borderRadius: 4, fontWeight: "bolder" }}
-        >
-          packages/react-app/src/views/Home.jsx
-        </span>
+        <button onClick={() => getAllowance()}>Get allowance</button>
       </div>
       <div style={{ margin: 32 }}>
-        <span style={{ marginRight: 8 }}>✏️</span>
-        Edit your smart contract{" "}
-        <span
-          className="highlight"
-          style={{ marginLeft: 4, /* backgroundColor: "#f9f9f9", */ padding: 4, borderRadius: 4, fontWeight: "bolder" }}
-        >
-          YourContract.sol
-        </span>{" "}
-        in{" "}
-        <span
-          className="highlight"
-          style={{ marginLeft: 4, /* backgroundColor: "#f9f9f9", */ padding: 4, borderRadius: 4, fontWeight: "bolder" }}
-        >
-          packages/hardhat/contracts
-        </span>
-      </div>
-      {!purpose ? (
-        <div style={{ margin: 32 }}>
-          <span style={{ marginRight: 8 }}>👷‍♀️</span>
-          You haven't deployed your contract yet, run
-          <span
-            className="highlight"
-            style={{
-              marginLeft: 4,
-              /* backgroundColor: "#f9f9f9", */ padding: 4,
-              borderRadius: 4,
-              fontWeight: "bolder",
-            }}
-          >
-            yarn chain
-          </span>{" "}
-          and{" "}
-          <span
-            className="highlight"
-            style={{
-              marginLeft: 4,
-              /* backgroundColor: "#f9f9f9", */ padding: 4,
-              borderRadius: 4,
-              fontWeight: "bolder",
-            }}
-          >
-            yarn deploy
-          </span>{" "}
-          to deploy your first contract!
-        </div>
-      ) : (
-        <div style={{ margin: 32 }}>
-          <span style={{ marginRight: 8 }}>🤓</span>
-          The "purpose" variable from your contract is{" "}
-          <span
-            className="highlight"
-            style={{
-              marginLeft: 4,
-              /* backgroundColor: "#f9f9f9", */ padding: 4,
-              borderRadius: 4,
-              fontWeight: "bolder",
-            }}
-          >
-            {purpose}
-          </span>
-        </div>
-      )}
-
-      <div style={{ margin: 32 }}>
-        <span style={{ marginRight: 8 }}>🤖</span>
-        An example prop of your balance{" "}
-        <span style={{ fontWeight: "bold", color: "green" }}>({ethers.utils.formatEther(yourLocalBalance)})</span> was
-        passed into the
-        <span
-          className="highlight"
-          style={{ marginLeft: 4, /* backgroundColor: "#f9f9f9", */ padding: 4, borderRadius: 4, fontWeight: "bolder" }}
-        >
-          Home.jsx
-        </span>{" "}
-        component from
-        <span
-          className="highlight"
-          style={{ marginLeft: 4, /* backgroundColor: "#f9f9f9", */ padding: 4, borderRadius: 4, fontWeight: "bolder" }}
-        >
-          App.jsx
-        </span>
-      </div>
-      <div style={{ margin: 32 }}>
-        <span style={{ marginRight: 8 }}>💭</span>
-        Check out the <Link to="/hints">"Hints"</Link> tab for more tips.
-      </div>
-      <div style={{ margin: 32 }}>
-        <span style={{ marginRight: 8 }}>🛠</span>
-        Tinker with your smart contract using the <Link to="/debug">"Debug Contract"</Link> tab.
+        <button onClick={() => signData()}>Press to sign with EIP712</button>
       </div>
     </div>
   );

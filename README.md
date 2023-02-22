@@ -1,3 +1,14 @@
+# My Own Edits and a Summary:
+
+Here is a summary of what this repository is about:
+
+1/ I cloned the Scaffold-ETH repo and built on top of that
+2/ I added two buttons to a frontend, one is checking your allowance (shows up in the browser console). The other is showing the EIP721 signing in Metamask.
+3/ This is all under "packages/react-app/src/views/Home.jsx"
+4/ Follow the instructions below for a standard Scaffold-ETH to spin up this example app:
+
+----
+
 # 🏗 Scaffold-ETH
 
 > everything you need to build on Ethereum! 🚀
